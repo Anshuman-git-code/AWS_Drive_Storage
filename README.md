@@ -12,11 +12,7 @@ A production-ready, serverless file storage application built on AWS with secure
 - **⚡ Serverless Architecture** - Auto-scaling, cost-effective
 
 ## 🏗️ Architecture
-
-```
-Frontend (HTML/JS) → API Gateway → Lambda Functions → S3 + DynamoDB
-                  ↘ Cognito (Auth)
-```
+<img width="1437" height="859" alt="Screenshot 2025-11-04 at 8 32 43 PM" src="https://github.com/user-attachments/assets/e45d6bdd-268d-40af-86e0-cf910fafdd48" />
 
 ## 📋 Prerequisites
 
