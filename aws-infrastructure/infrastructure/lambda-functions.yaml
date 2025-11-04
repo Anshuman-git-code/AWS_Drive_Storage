@@ -1,0 +1,389 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Lambda Functions for File Storage System'
+
+Parameters:
+  MainStackName:
+    Type: String
+    Description: 'Name of the main stack'
+  
+  LambdaCodeBucket:
+    Type: String
+    Description: 'S3 bucket containing Lambda code'
+    
+  ApiGatewayId:
+    Type: String
+    Description: 'Existing API Gateway ID'
+    
+  ApiAuthorizerId:
+    Type: String
+    Description: 'Existing API Gateway Authorizer ID'
+
+Resources:
+  # Upload File Lambda Function
+  UploadFileFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${MainStackName}-upload-file'
+      Runtime: python3.9
+      Handler: index.handler
+      Role: 
+        Fn::ImportValue: !Sub '${MainStackName}-LambdaExecutionRoleArn'
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: 'lambda/upload-file.zip'
+      Environment:
+        Variables:
+          FILE_STORAGE_BUCKET: 
+            Fn::ImportValue: !Sub '${MainStackName}-FileStorageBucket'
+          FILE_METADATA_TABLE: 
+            Fn::ImportValue: !Sub '${MainStackName}-FileMetadataTable'
+          USER_PERMISSIONS_TABLE: 
+            Fn::ImportValue: !Sub '${MainStackName}-UserPermissionsTable'
+      Timeout: 30
+
+  # Download File Lambda Function
+  DownloadFileFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${MainStackName}-download-file'
+      Runtime: python3.9
+      Handler: index.handler
+      Role: 
+        Fn::ImportValue: !Sub '${MainStackName}-LambdaExecutionRoleArn'
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: 'lambda/download-file.zip'
+      Environment:
+        Variables:
+          FILE_STORAGE_BUCKET: 
+            Fn::ImportValue: !Sub '${MainStackName}-FileStorageBucket'
+          FILE_METADATA_TABLE: 
+            Fn::ImportValue: !Sub '${MainStackName}-FileMetadataTable'
+          USER_PERMISSIONS_TABLE: 
+            Fn::ImportValue: !Sub '${MainStackName}-UserPermissionsTable'
+      Timeout: 30
+
+  # List Files Lambda Function
+  ListFilesFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${MainStackName}-list-files'
+      Runtime: python3.9
+      Handler: index.handler
+      Role: 
+        Fn::ImportValue: !Sub '${MainStackName}-LambdaExecutionRoleArn'
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: 'lambda/list-files.zip'
+      Environment:
+        Variables:
+          FILE_STORAGE_BUCKET: 
+            Fn::ImportValue: !Sub '${MainStackName}-FileStorageBucket'
+          FILE_METADATA_TABLE: 
+            Fn::ImportValue: !Sub '${MainStackName}-FileMetadataTable'
+          USER_PERMISSIONS_TABLE: 
+            Fn::ImportValue: !Sub '${MainStackName}-UserPermissionsTable'
+      Timeout: 30
+
+  # Delete File Lambda Function
+  DeleteFileFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${MainStackName}-delete-file'
+      Runtime: python3.9
+      Handler: index.handler
+      Role: 
+        Fn::ImportValue: !Sub '${MainStackName}-LambdaExecutionRoleArn'
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: 'lambda/delete-file.zip'
+      Environment:
+        Variables:
+          FILE_STORAGE_BUCKET: 
+            Fn::ImportValue: !Sub '${MainStackName}-FileStorageBucket'
+          FILE_METADATA_TABLE: 
+            Fn::ImportValue: !Sub '${MainStackName}-FileMetadataTable'
+          USER_PERMISSIONS_TABLE: 
+            Fn::ImportValue: !Sub '${MainStackName}-UserPermissionsTable'
+      Timeout: 30
+
+  # Share File Lambda Function
+  ShareFileFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${MainStackName}-share-file'
+      Runtime: python3.9
+      Handler: index.handler
+      Role: 
+        Fn::ImportValue: !Sub '${MainStackName}-LambdaExecutionRoleArn'
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: 'lambda/share-file.zip'
+      Environment:
+        Variables:
+          FILE_STORAGE_BUCKET: 
+            Fn::ImportValue: !Sub '${MainStackName}-FileStorageBucket'
+          FILE_METADATA_TABLE: 
+            Fn::ImportValue: !Sub '${MainStackName}-FileMetadataTable'
+          SHARED_FILES_TABLE: 
+            Fn::ImportValue: !Sub '${MainStackName}-SharedFilesTable'
+          USER_PERMISSIONS_TABLE: 
+            Fn::ImportValue: !Sub '${MainStackName}-UserPermissionsTable'
+      Timeout: 30
+
+  # Get Shared File Lambda Function
+  GetSharedFileFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${MainStackName}-get-shared-file'
+      Runtime: python3.9
+      Handler: index.handler
+      Role: 
+        Fn::ImportValue: !Sub '${MainStackName}-LambdaExecutionRoleArn'
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: 'lambda/get-shared-file.zip'
+      Environment:
+        Variables:
+          FILE_STORAGE_BUCKET: 
+            Fn::ImportValue: !Sub '${MainStackName}-FileStorageBucket'
+          FILE_METADATA_TABLE: 
+            Fn::ImportValue: !Sub '${MainStackName}-FileMetadataTable'
+          SHARED_FILES_TABLE: 
+            Fn::ImportValue: !Sub '${MainStackName}-SharedFilesTable'
+      Timeout: 30
+
+  # API Gateway Resources and Methods
+  FilesResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ParentId: 
+        Fn::GetAtt: 
+          - ApiGatewayId
+          - RootResourceId
+      PathPart: 'files'
+
+  # Upload File Method
+  UploadFileMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGatewayId
+      ResourceId: !Ref FilesResource
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiAuthorizerId'
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UploadFileFunction.Arn}/invocations'
+
+  # List Files Method
+  ListFilesMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+      ResourceId: !Ref FilesResource
+      HttpMethod: GET
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiAuthorizerId'
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListFilesFunction.Arn}/invocations'
+
+  # File Resource (for individual file operations)
+  FileResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+      ParentId: !Ref FilesResource
+      PathPart: '{fileId}'
+
+  # Download File Method
+  DownloadFileMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+      ResourceId: !Ref FileResource
+      HttpMethod: GET
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiAuthorizerId'
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DownloadFileFunction.Arn}/invocations'
+
+  # Delete File Method
+  DeleteFileMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+      ResourceId: !Ref FileResource
+      HttpMethod: DELETE
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiAuthorizerId'
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteFileFunction.Arn}/invocations'
+
+  # Share File Resource
+  ShareResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+      ParentId: !Ref FileResource
+      PathPart: 'share'
+
+  # Share File Method
+  ShareFileMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+      ResourceId: !Ref ShareResource
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiAuthorizerId'
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ShareFileFunction.Arn}/invocations'
+
+  # Shared Files Resource
+  SharedResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+      ParentId: 
+        Fn::GetAtt: 
+          - ApiGatewayRootResource
+          - RootResourceId
+      PathPart: 'shared'
+
+  # Shared File Resource
+  SharedFileResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+      ParentId: !Ref SharedResource
+      PathPart: '{shareId}'
+
+  # Get Shared File Method
+  GetSharedFileMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+      ResourceId: !Ref SharedFileResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetSharedFileFunction.Arn}/invocations'
+
+  # Lambda Permissions for API Gateway
+  UploadFilePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UploadFileFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/*/*'
+        - ApiId: 
+            Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+
+  DownloadFilePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DownloadFileFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/*/*'
+        - ApiId: 
+            Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+
+  ListFilesPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ListFilesFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/*/*'
+        - ApiId: 
+            Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+
+  DeleteFilePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DeleteFileFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/*/*'
+        - ApiId: 
+            Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+
+  ShareFilePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ShareFileFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/*/*'
+        - ApiId: 
+            Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+
+  GetSharedFilePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetSharedFileFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/*/*'
+        - ApiId: 
+            Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+
+  # API Gateway Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - UploadFileMethod
+      - DownloadFileMethod
+      - ListFilesMethod
+      - DeleteFileMethod
+      - ShareFileMethod
+      - GetSharedFileMethod
+    Properties:
+      RestApiId: 
+        Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+      StageName: 'prod'
+
+Outputs:
+  ApiGatewayUrl:
+    Description: 'API Gateway URL'
+    Value: !Sub 
+      - 'https://${ApiId}.execute-api.${AWS::Region}.amazonaws.com/prod'
+      - ApiId: 
+          Fn::ImportValue: !Sub '${MainStackName}-ApiGatewayId'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayUrl'

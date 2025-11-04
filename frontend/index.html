@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud File Storage System</title>
+    <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .card { background: rgba(255, 255, 255, 0.95); padding: 30px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); }
+        .hidden { display: none; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #4a5568; margin-bottom: 10px; }
+        .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; background: #48bb78; color: white; margin: 5px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #4a5568; }
+        input, select, textarea { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #667eea; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; margin: 5px; }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-secondary { background: #718096; }
+        .btn-danger { background: #e53e3e; }
+        .btn-success { background: #48bb78; }
+        .alert { padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .alert-success { background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
+        .alert-error { background: #fed7d7; color: #742a2a; border: 1px solid #fc8181; }
+        .alert-info { background: #bee3f8; color: #2a4365; border: 1px solid #90cdf4; }
+        .user-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: rgba(102, 126, 234, 0.1); border-radius: 8px; }
+        .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+        .file-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); }
+        .file-name { font-weight: 600; color: #2d3748; margin-bottom: 5px; }
+        .file-meta { font-size: 14px; color: #718096; margin-bottom: 15px; }
+        .file-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .file-actions .btn { padding: 8px 16px; font-size: 14px; margin: 0; }
+        .upload-area { border: 2px dashed #cbd5e0; border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 20px; transition: border-color 0.3s; }
+        .upload-area.dragover { border-color: #667eea; background: rgba(102, 126, 234, 0.1); }
+        .tabs { display: flex; margin-bottom: 20px; }
+        .tab { padding: 12px 24px; background: #f7fafc; border: 1px solid #e2e8f0; cursor: pointer; }
+        .tab.active { background: #667eea; color: white; }
+        .tab:first-child { border-radius: 8px 0 0 8px; }
+        .tab:last-child { border-radius: 0 8px 8px 0; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1); }
+        .stat-number { font-size: 2em; font-weight: bold; color: #667eea; }
+        .stat-label { color: #718096; margin-top: 5px; }
+        @media (max-width: 768px) { .container { padding: 10px; } .file-grid { grid-template-columns: 1fr; } .user-info { flex-direction: column; gap: 10px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚀 Cloud File Storage System</h1>
+            <span class="status-badge">Production Environment</span>
+            <span class="status-badge">AWS Powered</span>
+        </div>
+
+        <!-- Authentication Section -->
+        <div id="authSection" class="card">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('login')">Login</div>
+                <div class="tab" onclick="switchTab('signup')">Sign Up</div>
+            </div>
+
+            <!-- Login Form -->
+            <div id="loginForm">
+                <h2>🔐 Login to Your Account</h2>
+                <div id="loginMessage"></div>
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="Enter your email" value="">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter your password" value="">
+                </div>
+                <button class="btn" onclick="login()">Login</button>
+                
+                <div style="margin-top: 20px; padding: 15px; background: #f7fafc; border-radius: 8px;">
+                    <h4>Demo Accounts:</h4>
+                    <p><strong>User 1:</strong> testuser@example.com / TestPass123!</p>
+                    <p><strong>User 2:</strong> testdemo@example.com / TestPass123!</p>
+                    <p><strong>User 3:</strong> newuser@example.com / TestPass123!</p>
+                </div>
+            </div>
+
+            <!-- Sign Up Form -->
+            <div id="signupForm" class="hidden">
+                <h2>📝 Create New Account</h2>
+                <div id="signupMessage"></div>
+                <div class="form-group">
+                    <label for="signupEmail">Email Address</label>
+                    <input type="email" id="signupEmail" placeholder="Enter your email">
+                </div>
+                <div class="form-group">
+                    <label for="signupPassword">Password</label>
+                    <input type="password" id="signupPassword" placeholder="Enter your password (min 8 chars)">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Confirm your password">
+                </div>
+                <button class="btn" onclick="signUp()">Sign Up</button>
+                
+                <!-- Verification Code Form -->
+                <div id="verificationForm" class="hidden" style="margin-top: 20px; padding: 15px; background: #f7fafc; border-radius: 8px;">
+                    <h4>Email Verification</h4>
+                    <p>Please check your email and enter the verification code:</p>
+                    <div class="form-group">
+                        <input type="text" id="verificationCode" placeholder="Enter verification code">
+                    </div>
+                    <button class="btn btn-success" onclick="confirmSignUp()">Verify Account</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Application -->
+        <div id="mainSection" class="hidden">
+            <!-- User Info -->
+            <div class="card">
+                <div class="user-info">
+                    <div>
+                        <strong id="userEmail"></strong>
+                        <span id="userRole" class="status-badge"></span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="logout()">Logout</button>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalFiles">0</div>
+                        <div class="stat-label">Total Files</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalSize">0 MB</div>
+                        <div class="stat-label">Storage Used</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalDownloads">0</div>
+                        <div class="stat-label">Downloads</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div id="messages"></div>
+
+            <!-- File Upload -->
+            <div class="card">
+                <h3>📁 Upload Files</h3>
+                <div class="upload-area" id="uploadArea">
+                    <p>Drag and drop files here or click to select</p>
+                    <input type="file" id="fileInput" multiple style="display: none;">
+                    <button class="btn" onclick="document.getElementById('fileInput').click()">Select Files</button>
+                </div>
+            </div>
+
+            <!-- File Management -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3>📂 Your Files</h3>
+                    <button class="btn" onclick="loadFiles()">Refresh</button>
+                </div>
+                
+                <div id="fileList" class="file-grid">
+                    <div style="text-align: center; padding: 40px; color: #718096;">
+                        <p>Loading files...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            API_ENDPOINT: 'https://q8qkhsehv9.execute-api.us-east-1.amazonaws.com/prod',
+            USER_POOL_ID: 'us-east-1_1d4zyv4D9',
+            USER_POOL_CLIENT_ID: '2us1g7720q3mi1ehsneongcgrb'
+        };
+
+        // Global variables
+        let currentUser = null;
+        let authToken = null;
+        let files = [];
+        let pendingSignUpEmail = null;
+
+        // Initialize Cognito
+        const userPool = new AmazonCognitoIdentity.CognitoUserPool({
+            UserPoolId: CONFIG.USER_POOL_ID,
+            ClientId: CONFIG.USER_POOL_CLIENT_ID
+        });
+
+        // Utility Functions
+        function showMessage(elementId, message, type = 'info') {
+            const container = document.getElementById(elementId);
+            const alertClass = `alert-${type}`;
+            container.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
+            if (type === 'success') setTimeout(() => container.innerHTML = '', 3000);
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+            
+            if (tab === 'login') {
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('signupForm').classList.add('hidden');
+            } else {
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('signupForm').classList.remove('hidden');
+            }
+        }
+
+        // Initialize form inputs
+        function initializeForms() {
+            // Clear any readonly/disabled attributes
+            const inputs = document.querySelectorAll('input[type="email"], input[type="password"], input[type="text"]');
+            inputs.forEach(input => {
+                input.removeAttribute('readonly');
+                input.removeAttribute('disabled');
+                input.style.pointerEvents = 'auto';
+                input.style.userSelect = 'auto';
+            });
+            
+            // Set demo values for convenience
+            document.getElementById('loginEmail').value = 'testuser@example.com';
+            document.getElementById('loginPassword').value = 'TestPass123!';
+        }
+
+        // Authentication Functions
+        function signUp() {
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (!email || !password) {
+                showMessage('signupMessage', 'Please fill in all fields', 'error');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showMessage('signupMessage', 'Passwords do not match', 'error');
+                return;
+            }
+
+            if (password.length < 8) {
+                showMessage('signupMessage', 'Password must be at least 8 characters', 'error');
+                return;
+            }
+
+            showMessage('signupMessage', 'Creating account...', 'info');
+
+            const attributeList = [
+                new AmazonCognitoIdentity.CognitoUserAttribute({
+                    Name: 'email',
+                    Value: email
+                })
+            ];
+
+            userPool.signUp(email, password, attributeList, null, (err, result) => {
+                if (err) {
+                    showMessage('signupMessage', `Sign up failed: ${err.message}`, 'error');
+                    return;
+                }
+
+                pendingSignUpEmail = email;
+                showMessage('signupMessage', 'Account created! Please check your email for verification code.', 'success');
+                document.getElementById('verificationForm').classList.remove('hidden');
+            });
+        }
+
+        function confirmSignUp() {
+            const code = document.getElementById('verificationCode').value;
+
+            if (!code || !pendingSignUpEmail) {
+                showMessage('signupMessage', 'Please enter verification code', 'error');
+                return;
+            }
+
+            const userData = {
+                Username: pendingSignUpEmail,
+                Pool: userPool
+            };
+
+            const cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+
+            cognitoUser.confirmRegistration(code, true, (err, result) => {
+                if (err) {
+                    showMessage('signupMessage', `Verification failed: ${err.message}`, 'error');
+                    return;
+                }
+
+                showMessage('signupMessage', 'Account verified successfully! You can now login.', 'success');
+                document.getElementById('verificationForm').classList.add('hidden');
+                switchTab('login');
+                document.getElementById('loginEmail').value = pendingSignUpEmail;
+            });
+        }
+
+        function login() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                showMessage('loginMessage', 'Please enter email and password', 'error');
+                return;
+            }
+
+            showMessage('loginMessage', 'Logging in...', 'info');
+
+            const authenticationData = {
+                Username: email,
+                Password: password
+            };
+
+            const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
+
+            const userData = {
+                Username: email,
+                Pool: userPool
+            };
+
+            const cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+
+            cognitoUser.authenticateUser(authenticationDetails, {
+                onSuccess: (result) => {
+                    authToken = result.getIdToken().getJwtToken();
+                    currentUser = {
+                        email: result.getIdToken().payload.email,
+                        role: result.getIdToken().payload['custom:role'] || 'user'
+                    };
+
+                    showMessage('loginMessage', 'Login successful!', 'success');
+                    showMainSection();
+                },
+                onFailure: (err) => {
+                    showMessage('loginMessage', `Login failed: ${err.message}`, 'error');
+                }
+            });
+        }
+
+        function logout() {
+            const cognitoUser = userPool.getCurrentUser();
+            if (cognitoUser) cognitoUser.signOut();
+
+            currentUser = null;
+            authToken = null;
+            files = [];
+
+            document.getElementById('authSection').classList.remove('hidden');
+            document.getElementById('mainSection').classList.add('hidden');
+            showMessage('loginMessage', 'Logged out successfully', 'success');
+        }
+
+        function showMainSection() {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('mainSection').classList.remove('hidden');
+
+            document.getElementById('userEmail').textContent = currentUser.email;
+            document.getElementById('userRole').textContent = currentUser.role.toUpperCase();
+
+            setupFileUpload();
+            
+            // Test connection first
+            testConnection().then(() => {
+                loadFiles();
+            });
+        }
+
+        async function testConnection() {
+            try {
+                console.log('Testing API connection...');
+                console.log('API Endpoint:', CONFIG.API_ENDPOINT);
+                console.log('Auth Token:', authToken ? 'Present' : 'Missing');
+                
+                const response = await fetch(`${CONFIG.API_ENDPOINT}/files`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                console.log('Connection test status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+                
+                const responseText = await response.text();
+                console.log('Response body:', responseText);
+                
+                if (response.status === 401) {
+                    showMessage('messages', 'Authentication issue. Please try logging in again.', 'error');
+                    return false;
+                } else if (!response.ok) {
+                    showMessage('messages', `API Error ${response.status}: ${responseText}`, 'error');
+                } else {
+                    showMessage('messages', 'API connection successful!', 'success');
+                }
+                
+                return response.ok;
+            } catch (error) {
+                console.error('Connection test failed:', error);
+                showMessage('messages', `Connection failed: ${error.name} - ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // File Management Functions
+        function setupFileUpload() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = Array.from(e.dataTransfer.files);
+                uploadFiles(files);
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                uploadFiles(files);
+            });
+        }
+
+        async function uploadFiles(fileList) {
+            if (!fileList || fileList.length === 0) return;
+
+            for (const file of fileList) {
+                await uploadFile(file);
+            }
+            
+            // Refresh file list once after all uploads
+            loadFiles();
+        }
+
+        async function uploadFile(file) {
+            try {
+                showMessage('messages', `Uploading ${file.name}...`, 'info');
+
+                // Convert file to base64
+                const reader = new FileReader();
+                const base64Promise = new Promise((resolve, reject) => {
+                    reader.onload = () => {
+                        const base64 = reader.result.split(',')[1];
+                        resolve(base64);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+
+                const base64Data = await base64Promise;
+
+                console.log('Uploading:', file.name, 'Size:', file.size, 'Auth:', !!authToken);
+
+                const response = await fetch(`${CONFIG.API_ENDPOINT}/files`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        filename: file.name,
+                        content: base64Data
+                    })
+                });
+
+                console.log('Upload response status:', response.status);
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Upload success:', result);
+                    showMessage('messages', `${file.name} uploaded successfully!`, 'success');
+                } else if (response.status === 401) {
+                    showMessage('messages', 'Session expired. Please login again.', 'error');
+                    logout();
+                } else {
+                    const errorText = await response.text();
+                    console.error('Upload error:', errorText);
+                    showMessage('messages', `Upload failed (${response.status}): ${errorText}`, 'error');
+                }
+
+            } catch (error) {
+                console.error('Upload exception:', error);
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    showMessage('messages', 'Network error: Cannot connect to API for upload.', 'error');
+                } else {
+                    showMessage('messages', `Upload error: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        async function loadFiles() {
+            try {
+                document.getElementById('messages').innerHTML = '<div class="alert alert-info">Loading files...</div>';
+
+                const response = await fetch(`${CONFIG.API_ENDPOINT}/files`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                console.log('Load files response status:', response.status);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    files = data.files || [];
+                    renderFiles();
+                    updateStats();
+                    document.getElementById('messages').innerHTML = '';
+                } else if (response.status === 401) {
+                    showMessage('messages', 'Session expired. Please login again.', 'error');
+                    logout();
+                } else {
+                    const errorText = await response.text();
+                    console.error('Load files error:', errorText);
+                    showMessage('messages', `API Error (${response.status}): ${errorText}`, 'error');
+                    // Show empty state instead of blocking UI
+                    files = [];
+                    renderFiles();
+                    updateStats();
+                }
+
+            } catch (error) {
+                console.error('Load files exception:', error);
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    showMessage('messages', 'Network error: Cannot connect to API. Check if server is running.', 'error');
+                } else {
+                    showMessage('messages', `Connection error: ${error.message}`, 'error');
+                }
+                // Show empty state for connection issues
+                files = [];
+                renderFiles();
+                updateStats();
+            }
+        }
+
+        function renderFiles() {
+            const fileList = document.getElementById('fileList');
+
+            if (files.length === 0) {
+                fileList.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #718096; grid-column: 1 / -1;">
+                        <h3>No files found</h3>
+                        <p>Upload your first file to get started!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            fileList.innerHTML = files.map(file => `
+                <div class="file-card">
+                    <div class="file-name">${file.filename}</div>
+                    <div class="file-meta">
+                        Size: ${formatFileSize(file.fileSize)}<br>
+                        Uploaded: ${formatDate(file.uploadDate)}<br>
+                        Downloads: ${file.downloadCount || 0}<br>
+                        ${file.tags ? `Tags: ${file.tags.join(', ')}` : ''}
+                    </div>
+                    <div class="file-actions">
+                        <button class="btn" onclick="downloadFile('${file.fileId}')">Download</button>
+                        <button class="btn btn-success" onclick="shareFile('${file.fileId}')">Share</button>
+                        <button class="btn btn-danger" onclick="deleteFile('${file.fileId}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function downloadFile(fileId) {
+            try {
+                showMessage('messages', 'Generating download link...', 'info');
+
+                const response = await fetch(`${CONFIG.API_ENDPOINT}/files/${fileId}`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.downloadUrl) {
+                        window.open(data.downloadUrl, '_blank');
+                        showMessage('messages', 'Download started!', 'success');
+                        setTimeout(() => loadFiles(), 1000);
+                    } else {
+                        showMessage('messages', 'Download URL not available', 'error');
+                    }
+                } else {
+                    const error = await response.json();
+                    showMessage('messages', `Download failed: ${error.error}`, 'error');
+                }
+
+            } catch (error) {
+                showMessage('messages', `Download failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function shareFile(fileId) {
+            try {
+                const hours = prompt('Share for how many hours? (1-24)', '24');
+                if (!hours || hours < 1 || hours > 24) return;
+
+                showMessage('messages', 'Creating share link...', 'info');
+
+                const response = await fetch(`${CONFIG.API_ENDPOINT}/files/${fileId}/share`, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        expirationHours: parseInt(hours)
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const shareUrl = `${window.location.origin}/?share=${data.shareId}`;
+
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                        showMessage('messages', `Share link copied to clipboard! Expires in ${hours} hours.`, 'success');
+                    }).catch(() => {
+                        prompt('Share link (copy manually):', shareUrl);
+                    });
+                } else {
+                    const error = await response.json();
+                    showMessage('messages', `Share failed: ${error.error}`, 'error');
+                }
+
+            } catch (error) {
+                console.error('Share exception:', error);
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    showMessage('messages', 'Network error: Cannot connect to API for share.', 'error');
+                } else {
+                    showMessage('messages', `Share failed: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        async function deleteFile(fileId) {
+            if (!confirm('Are you sure you want to delete this file?')) return;
+
+            try {
+                showMessage('messages', 'Deleting file...', 'info');
+
+                const response = await fetch(`${CONFIG.API_ENDPOINT}/files/${fileId}`, {
+                    method: 'DELETE',
+                    mode: 'cors',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    showMessage('messages', 'File deleted successfully!', 'success');
+                    loadFiles();
+                } else {
+                    const error = await response.json();
+                    showMessage('messages', `Delete failed: ${error.error}`, 'error');
+                }
+
+            } catch (error) {
+                console.error('Delete exception:', error);
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    showMessage('messages', 'Network error: Cannot connect to API for delete.', 'error');
+                } else {
+                    showMessage('messages', `Delete failed: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // Utility Functions
+        function updateStats() {
+            const totalFiles = files.length;
+            const totalSize = files.reduce((sum, file) => sum + (file.fileSize || 0), 0);
+            const totalDownloads = files.reduce((sum, file) => sum + (file.downloadCount || 0), 0);
+
+            document.getElementById('totalFiles').textContent = totalFiles;
+            document.getElementById('totalSize').textContent = formatFileSize(totalSize);
+            document.getElementById('totalDownloads').textContent = totalDownloads;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Initialize app
+        window.onload = function() {
+            // Check if this is a shared file URL using query parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const shareId = urlParams.get('share');
+            if (shareId) {
+                showSharedFileViewer(shareId);
+                return;
+            }
+
+            // Initialize forms first
+            initializeForms();
+            
+            const cognitoUser = userPool.getCurrentUser();
+            if (cognitoUser) {
+                cognitoUser.getSession((err, session) => {
+                    if (err) return;
+                    if (session.isValid()) {
+                        authToken = session.getIdToken().getJwtToken();
+                        currentUser = {
+                            email: session.getIdToken().payload.email,
+                            role: session.getIdToken().payload['custom:role'] || 'user'
+                        };
+                        showMainSection();
+                    }
+                });
+            }
+        };
+
+        // Shared File Viewer
+        async function showSharedFileViewer(shareId) {
+            document.body.innerHTML = `
+                <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div style="background: white; padding: 40px; border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); max-width: 500px; width: 90%; text-align: center;">
+                        <div id="sharedContent">
+                            <div style="font-size: 64px; margin-bottom: 20px;">📄</div>
+                            <h1 style="color: #4a5568; margin-bottom: 10px;">Loading shared file...</h1>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            try {
+                console.log('Fetching shared file:', shareId);
+                const response = await fetch(`${CONFIG.API_ENDPOINT}/shared/${shareId}`);
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.log('Error response:', errorText);
+                    if (response.status === 404) {
+                        showSharedError('Shared file not found or has expired');
+                    } else {
+                        showSharedError(`Failed to load shared file (${response.status})`);
+                    }
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('Shared file data:', data);
+                showSharedFileInfo(data);
+
+            } catch (error) {
+                console.error('Shared file error:', error);
+                showSharedError('Failed to load shared file: ' + error.message);
+            }
+        }
+
+        function showSharedFileInfo(fileData) {
+            console.log('Displaying file data:', fileData);
+            
+            // Map the API response structure
+            const fileInfo = fileData.fileInfo || {};
+            const shareInfo = fileData.shareInfo || {};
+            
+            const filename = fileInfo.filename || 'Unknown File';
+            const fileSize = fileInfo.fileSize || 0;
+            const sharedAt = shareInfo.sharedAt ? new Date(shareInfo.sharedAt).toLocaleString() : 'Unknown';
+            const expiresAt = shareInfo.expiresAt ? new Date(shareInfo.expiresAt * 1000).toLocaleString() : 'Unknown'; // Convert from timestamp
+            const downloadUrl = fileData.downloadUrl || '#';
+            
+            document.getElementById('sharedContent').innerHTML = `
+                <div style="font-size: 64px; margin-bottom: 20px;">📄</div>
+                <h1 style="color: #4a5568; margin-bottom: 10px;">Shared File</h1>
+                <div style="background: #f7fafc; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                    <h3>${filename}</h3>
+                    <p>Size: ${formatFileSize(fileSize)}</p>
+                    <p>Shared: ${sharedAt}</p>
+                    <p>Expires: ${expiresAt}</p>
+                </div>
+                ${downloadUrl !== '#' ? 
+                    `<a href="${downloadUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; margin: 10px; text-decoration: none; display: inline-block;" target="_blank">Download File</a>` :
+                    `<div style="color: #e53e3e; padding: 10px;">Download not available</div>`
+                }
+                <br><br>
+                <a href="/" style="background: #718096; color: white; padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block;">Go to Main Site</a>
+            `;
+        }
+
+        function showSharedError(message) {
+            document.getElementById('sharedContent').innerHTML = `
+                <div style="font-size: 64px; margin-bottom: 20px;">❌</div>
+                <h1 style="color: #4a5568; margin-bottom: 10px;">Error</h1>
+                <div style="color: #e53e3e; background: #fed7d7; padding: 15px; border-radius: 8px; margin: 20px 0;">${message}</div>
+                <a href="/" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block;">Go to Main Site</a>
+            `;
+        }
+    </script>
+</body>
+</html>
