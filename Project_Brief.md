@@ -25,10 +25,8 @@ A **production-ready, serverless file storage application** built entirely on AW
 ## 🏗️ **Architecture Overview**
 
 ### System Flow
-```
-User Browser → API Gateway → Lambda Functions → S3 + DynamoDB
-              ↘ Cognito (Authentication)
-```
+<img width="1437" height="859" alt="Screenshot 2025-11-04 at 8 32 43 PM" src="https://github.com/user-attachments/assets/e8cb9301-cba7-4424-aa6c-d88c5e1a7f3c" />
+
 
 ### Core AWS Services
 | Service | Purpose | Why This Choice |
