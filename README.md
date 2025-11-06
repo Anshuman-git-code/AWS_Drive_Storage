@@ -11,7 +11,12 @@ A production-ready, serverless file storage application built on AWS with secure
 - **🛡️ Enterprise Security** - Encryption, CORS, role-based access
 - **⚡ Serverless Architecture** - Auto-scaling, cost-effective
 
+## Demo Video
+
+https://github.com/user-attachments/assets/fce7eeb5-dd08-4446-8116-b444ef1a1521
+
 ## 🏗️ Architecture
+
 <img width="1437" height="859" alt="Screenshot 2025-11-04 at 8 32 43 PM" src="https://github.com/user-attachments/assets/e45d6bdd-268d-40af-86e0-cf910fafdd48" />
 
 ## 📋 Prerequisites
